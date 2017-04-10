@@ -1,0 +1,5 @@
+vk_api
+numpy
+pandas
+gensim
+nltk
