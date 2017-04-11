@@ -4,6 +4,7 @@ from functools import lru_cache
 import pandas as pd
 import vk_api
 from numpy import NaN
+from tqdm import tqdm
 
 from vk_text_likeness.lda_maker import LdaMaker
 
@@ -30,9 +31,12 @@ class RawUsersData:
 
     def _fetch_members_friends(self):
         member_friends = []
-        for member in self.members:
-            friends = self.vk.friends.get(user_id=member['id'], fields=self.member_fields)['items']
-            member_friends.extend(friends)
+        for member in tqdm(self.members):
+            try:
+                friends = self.vk.friends.get(user_id=member['id'], fields=self.member_fields)['items']
+                member_friends.extend(friends)
+            except vk_api.exceptions.ApiError:
+                pass
 
         self.member_friends = []
         for member in member_friends:
@@ -45,9 +49,11 @@ class RawUsersData:
                 self.member_friends.append(member)
 
     def _fetch_groups(self):
-        for users in [self.members, self.member_friends]:
-            for user in users:
+        for user in tqdm(self.members + self.member_friends):
+            try:
                 user['groups'] = self.vk.groups.get(user_id=user['id'], count=1000, extended=1, fields=self.group_fields)['items']
+            except vk_api.exceptions.ApiError:
+                pass
 
     def find_user(self, user_id):
         for user in self.members:
@@ -62,7 +68,10 @@ class RawUsersData:
 class TableUsersData:
     def __init__(self, raw_users_data, num_topics=15):
         self.raw_users_data = raw_users_data
-        self.lda_maker = LdaMaker(self._get_corpora_for_lda(), num_topics)
+        self.num_topics = num_topics
+
+    def fit(self):
+        self.lda_maker = LdaMaker(self._get_corpora_for_lda(), self.num_topics)
 
     def get_all(self, do_members=True, do_member_friends=True):
         users = []
@@ -70,7 +79,7 @@ class TableUsersData:
             users.extend(self.raw_users_data.members)
         if do_member_friends:
             users.extend(self.raw_users_data.member_friends)
-        return pd.DataFrame([self.get_row(user) for user in users], index=[user['id'] for user in users])
+        return pd.DataFrame([self.get_row(user) for user in tqdm(users)], index=[user['id'] for user in users])
 
     @lru_cache(maxsize=-1)
     def get_row(self, user):

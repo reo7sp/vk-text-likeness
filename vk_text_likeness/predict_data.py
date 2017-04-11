@@ -1,6 +1,7 @@
 from collections import defaultdict
 
 import pandas as pd
+from tqdm import tqdm
 
 
 class PredictActionData:
@@ -12,7 +13,7 @@ class PredictActionData:
 
     def get_all(self):
         rows = []
-        for post in self.raw_wall_data.posts:
+        for post in tqdm(self.raw_wall_data.posts):
             user_actions = defaultdict(lambda: {'is_liked': False, 'is_reposted': False})
             for user in post['likes']['users']:
                 user_actions[user['id']]['is_liked'] = True

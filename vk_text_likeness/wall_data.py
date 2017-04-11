@@ -2,6 +2,7 @@ from functools import lru_cache
 
 import vk_api
 import pandas as pd
+from tqdm import tqdm
 
 from vk_text_likeness.lda_maker import LdaMaker
 
@@ -19,23 +20,23 @@ class RawWallData:
         self._fetch_activity()
 
     def _fetch_wall(self):
-        self.posts = self.vk_tools.get_all('wall.get', 100, {'owner_id': self.group_id, 'extended': 1})['items']
+        self.posts = self.vk_tools.get_all('wall.get', 100, {'owner_id': -self.group_id, 'extended': 1})['items']
 
     def _fetch_activity(self):
-        for post in self.posts:
-            likes = self.vk.likes.getList(filter='likes', item_id=post['id'], owner_id=post['owner_id'], count=1000,
+        for post in tqdm(self.posts):
+            likes = self.vk.likes.getList(filter='likes', item_id=post['id'], owner_id=-post['owner_id'], count=1000,
                                           **{'type': 'post'})
             likes = likes['items']
             post['likes'] = dict() if 'likes' not in post else post['likes']
             post['likes']['users'] = likes
 
-            reposts = self.vk.likes.getList(filter='copies', item_id=post['id'], owner_id=post['owner_id'], count=1000,
+            reposts = self.vk.likes.getList(filter='copies', item_id=post['id'], owner_id=-post['owner_id'], count=1000,
                                             **{'type': 'post'})
             reposts = reposts['items']
             post['reposts'] = dict() if 'likes' not in post else post['reposts']
             post['reposts']['users'] = reposts
 
-            comments = self.vk.wall.getComments(post_id=post['id'], owner_id=post['owner_id'], need_likes=1, count=1000)
+            comments = self.vk.wall.getComments(post_id=post['id'], owner_id=-post['owner_id'], need_likes=1, count=1000)
             comments = comments['items']
             post['comments'] = dict() if 'likes' not in post else post['comments']
             post['comments']['items'] = comments
@@ -44,11 +45,14 @@ class RawWallData:
 class TableWallData:
     def __init__(self, raw_wall_data, num_topics=15):
         self.raw_wall_data = raw_wall_data
-        self.lda_maker = LdaMaker(self._get_corpora_for_lda(), num_topics)
+        self.num_topics = num_topics
+
+    def fit(self):
+        self.lda_maker = LdaMaker(self._get_corpora_for_lda(), self.num_topics)
 
     def get_all(self):
         posts = self.raw_wall_data.posts
-        return pd.DataFrame([self.get_row(post) for post in posts], index=[post['id'] for post in posts])
+        return pd.DataFrame([self.get_row(post) for post in tqdm(posts)], index=[post['id'] for post in posts])
 
     @lru_cache(maxsize=-1)
     def get_row(self, post):
