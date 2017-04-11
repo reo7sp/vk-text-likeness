@@ -24,8 +24,12 @@ class PredictActionData:
         return pd.DataFrame(rows, columns=self.get_labels())
 
     def get_row(self, user, post, is_liked, is_reposted):
-        return self.table_users_data.get_row(user) + self.table_wall_data.get_row(post) + [is_liked, is_reposted]
+        return [user['id']] + self.table_users_data.get_row(user) + \
+               [post['id']] + self.table_wall_data.get_row(post) + \
+               [is_liked, is_reposted]
 
     def get_labels(self):
-        return self.table_users_data.get_labels() + self.table_wall_data.get_labels() + ['is_liked', 'is_reposted']
+        return ['user_id'] + self.table_users_data.get_labels() + \
+               ['post_id'] + self.table_wall_data.get_labels() + \
+               ['is_liked', 'is_reposted']
 
