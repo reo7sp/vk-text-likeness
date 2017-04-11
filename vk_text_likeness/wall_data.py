@@ -3,13 +3,15 @@ from functools import lru_cache
 import vk_api
 import pandas as pd
 
+from vk_text_likeness.lda_maker import LdaMaker
+
 
 class RawWallData:
-    def __init__(self, vk_session, group_id):
+    def __init__(self, group_id, vk_session):
+        self.group_id = group_id
         self.vk_session = vk_session
         self.vk = self.vk_session.get_api()
         self.vk_tools = vk_api.VkTools(self.vk_session)
-        self.group_id = group_id
         self.posts = []
 
     def fetch(self):
@@ -40,9 +42,9 @@ class RawWallData:
 
 
 class TableWallData:
-    def __init__(self, raw_wall_data, lda_maker):
+    def __init__(self, raw_wall_data, num_topics=15):
         self.raw_wall_data = raw_wall_data
-        self.lda_maker = lda_maker
+        self.lda_maker = LdaMaker(self._get_corpora_for_lda(), num_topics)
 
     def get_all(self):
         posts = self.raw_wall_data.posts
@@ -54,6 +56,13 @@ class TableWallData:
 
     def get_labels(self):
         return ['text_len'] + ['post_lda' + str(i) for i in range(self.lda_maker.num_topics)]
+
+    def _get_corpora_for_lda(self):
+        corpora = []
+        for post in self.raw_wall_data.posts:
+            doc = post['text']
+            corpora.append(doc)
+        return corpora
 
     @staticmethod
     def _post_text_len(post):

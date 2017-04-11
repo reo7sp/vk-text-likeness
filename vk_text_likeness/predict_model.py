@@ -17,18 +17,22 @@ class PredictActionModel:
         self.like_model.fit(x_df, df['is_liked'])
         self.repost_model.fit(x_df, df['is_reposted'])
 
-    def predict(self, df):
+    def predict(self):
+        df = self.predict_data.get_all()
         x_df = df.drop(['user_id', 'post_id', 'is_liked', 'is_reposted'])
         pred = np.hstack([df['user_id'], df['post_id'], self.like_model.predict(x_df), self.repost_model.predict(x_df)])
         return pd.DataFrame(pred, columns=['user_id', 'post_id', 'is_liked', 'is_reposted'])
 
 
 class PredictStatsModel:
-    def __init__(self, predict_action_model, raw_users_data):
+    def __init__(self, predict_action_model, raw_users_data, predict_action_data):
         self.predict_action_model = predict_action_model
         self.raw_users_data = raw_users_data
+        self.predict_action_data = predict_action_data
 
-    def predict(self, df):
+    def predict(self):
+        df = self.predict_action_data.get_all()
+
         direct_likes_count = Counter()
         reposts_count = Counter()
         non_direct_likes_count = Counter()

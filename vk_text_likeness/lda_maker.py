@@ -14,10 +14,9 @@ with open('data/stopwords.txt') as f:
 
 
 class LdaMaker:
-    def __init__(self, num_topics=15):
+    def __init__(self, corpora, num_topics):
         self.num_topics = num_topics
 
-    def fit(self, corpora):
         self.tokenizer = nltk.tokenize.TreebankWordTokenizer()
         self.stemmer = RussianStemmer()
 

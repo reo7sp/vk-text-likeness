@@ -5,13 +5,15 @@ import pandas as pd
 import vk_api
 from numpy import NaN
 
+from vk_text_likeness.lda_maker import LdaMaker
+
 
 class RawUsersData:
-    def __init__(self, vk_session, group_id):
+    def __init__(self, group_id, vk_session):
+        self.group_id = group_id
         self.vk_session = vk_session
         self.vk = self.vk_session.get_api()
         self.vk_tools = vk_api.VkTools(self.vk_session)
-        self.group_id = group_id
         self.members = []
         self.member_friends = []
         self.member_fields = 'sex,bdate,country'
@@ -47,7 +49,7 @@ class RawUsersData:
             for user in users:
                 user['groups'] = self.vk.groups.get(user_id=user['id'], count=1000, extended=1, fields=self.group_fields)['items']
 
-    def _find_user(self, user_id):
+    def find_user(self, user_id):
         for user in self.members:
             if user['id'] == user_id:
                 return {'user': user, 'is_member': True}
@@ -58,9 +60,9 @@ class RawUsersData:
 
 
 class TableUsersData:
-    def __init__(self, raw_users_data, lda_maker):
+    def __init__(self, raw_users_data, num_topics=15):
         self.raw_users_data = raw_users_data
-        self.lda_maker = lda_maker
+        self.lda_maker = LdaMaker(self._get_corpora_for_lda(), num_topics)
 
     def get_all(self, do_members=True, do_member_friends=True):
         users = []
@@ -80,6 +82,15 @@ class TableUsersData:
         return (['is_woman', 'is_man', 'age',
                  'is_in_russia', 'is_in_ukraine', 'is_in_byelorussia', 'is_in_kazakstan'] +
                 ['user_lda' + str(i) for i in range(self.lda_maker.num_topics)])
+
+    def _get_corpora_for_lda(self):
+        corpora = []
+        for users in [self.raw_users_data.members, self.raw_users_data.member_friends]:
+            for user in users:
+                for group in user['groups']:
+                    doc = group['description']
+                    corpora.append(doc)
+        return corpora
 
     @staticmethod
     def _user_is_woman(user):
