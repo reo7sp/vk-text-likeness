@@ -1,10 +1,12 @@
 from datetime import date
+from functools import lru_cache
 
+import pandas as pd
 import vk_api
 from numpy import NaN
 
 
-class RawSubscribersData:
+class RawUsersData:
     def __init__(self, vk_session, group_id):
         self.vk_session = vk_session
         self.vk = self.vk_session.get_api()
@@ -25,30 +27,54 @@ class RawSubscribersData:
                                              {'group_id': self.group_id, 'fields': self.member_fields})['items']
 
     def _fetch_members_friends(self):
-        self.member_friends = []
+        member_friends = []
         for member in self.members:
             friends = self.vk.friends.get(user_id=member['id'], fields=self.member_fields)['items']
-            self.member_friends.extend(friends)
+            member_friends.extend(friends)
+
+        self.member_friends = []
+        for member in member_friends:
+            found = False
+            for user in self.members:
+                if user['id'] == member['id']:
+                    found = True
+                    break
+            if not found:
+                self.member_friends.append(member)
 
     def _fetch_groups(self):
         for users in [self.members, self.member_friends]:
             for user in users:
                 user['groups'] = self.vk.groups.get(user_id=user['id'], count=1000, extended=1, fields=self.group_fields)['items']
 
+    def _find_user(self, user_id):
+        for user in self.members:
+            if user['id'] == user_id:
+                return {'user': user, 'is_member': True}
+        for user in self.member_friends:
+            if user['id'] == user_id:
+                return {'user': user, 'is_member': False}
+        return None
 
-class SubscribersDataInTable:
-    def __init__(self, raw_subscribers_data, lda_maker):
-        self.raw_subscribers_data = raw_subscribers_data
+
+class TableUsersData:
+    def __init__(self, raw_users_data, lda_maker):
+        self.raw_users_data = raw_users_data
         self.lda_maker = lda_maker
 
-    def get(self):
-        pass  # TODO
+    def get_all(self, do_members=True, do_member_friends=True):
+        users = []
+        if do_members:
+            users.extend(self.raw_users_data.members)
+        if do_member_friends:
+            users.extend(self.raw_users_data.member_friends)
+        return pd.DataFrame([self.get_row(user) for user in users], index=[user['id'] for user in users])
 
-    def _get_row(self, user):
-        row = [self._user_is_woman(user), self._user_is_man(user), self._user_age(user),
-                self._user_is_in_russia(user), self._user_is_in_ukraine(user), self._user_is_in_byelorussia(user), self._user_is_in_kazakstan(user)]
-        row.extend(self._user_lda_by_groups(user))
-        return row
+    @lru_cache(maxsize=-1)
+    def get_row(self, user):
+        return ([self._user_is_woman(user), self._user_is_man(user), self._user_age(user),
+                self._user_is_in_russia(user), self._user_is_in_ukraine(user), self._user_is_in_byelorussia(user), self._user_is_in_kazakstan(user)] +
+                self._user_lda_by_groups(user))
 
     @staticmethod
     def _user_is_woman(user):
