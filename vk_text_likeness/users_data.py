@@ -27,13 +27,13 @@ class RawUsersData:
 
     def _fetch_members(self):
         self.members = self.vk_tools.get_all('groups.getMembers', 1000,
-                                             {'group_id': self.group_id, 'fields': self.member_fields})['items']
+                                             {'group_id': self.group_id, 'fields': self.member_fields})['items'][:5]  # FIXME
 
     def _fetch_members_friends(self):
         member_friends = []
-        for member in tqdm(self.members):
+        for member in tqdm(self.members, 'RawUsersData._fetch_members_friends: for members'):
             try:
-                friends = self.vk.friends.get(user_id=member['id'], fields=self.member_fields)['items']
+                friends = self.vk.friends.get(user_id=member['id'], fields=self.member_fields)['items'][:1] # FIXME
                 member_friends.extend(friends)
             except vk_api.exceptions.ApiError:
                 pass
@@ -49,7 +49,7 @@ class RawUsersData:
                 self.member_friends.append(member)
 
     def _fetch_groups(self):
-        for user in tqdm(self.members + self.member_friends):
+        for user in tqdm(self.members + self.member_friends, 'RawUsersData._fetch_groups: for members + member_friends'):
             try:
                 user['groups'] = self.vk.groups.get(user_id=user['id'], count=1000, extended=1, fields=self.group_fields)['items']
             except vk_api.exceptions.ApiError:
@@ -79,7 +79,7 @@ class TableUsersData:
             users.extend(self.raw_users_data.members)
         if do_member_friends:
             users.extend(self.raw_users_data.member_friends)
-        return pd.DataFrame([self.get_row(user) for user in tqdm(users)], index=[user['id'] for user in users])
+        return pd.DataFrame([self.get_row(user) for user in tqdm(users, 'TableUsersData.get_all: for users')], index=[user['id'] for user in users])
 
     @lru_cache(maxsize=-1)
     def get_row(self, user):
@@ -97,8 +97,11 @@ class TableUsersData:
         for users in [self.raw_users_data.members, self.raw_users_data.member_friends]:
             for user in users:
                 for group in user['groups']:
-                    doc = group['description']
-                    corpora.append(doc)
+                    try:
+                        doc = group['description']
+                        corpora.append(doc)
+                    except KeyError:
+                        pass
         return corpora
 
     @staticmethod

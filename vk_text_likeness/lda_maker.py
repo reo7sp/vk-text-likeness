@@ -1,7 +1,6 @@
 import gensim
 import nltk
 from gensim.models.ldamulticore import LdaMulticore
-from nltk.stem.snowball import RussianStemmer
 from nltk.corpus import stopwords
 
 
@@ -18,7 +17,7 @@ class LdaMaker:
         self.num_topics = num_topics
 
         self.tokenizer = nltk.tokenize.TreebankWordTokenizer()
-        self.stemmer = RussianStemmer()
+        self.stemmer = nltk.stem.snowball.RussianStemmer()
 
         corpora_tokenzied = [self.tokenizer.tokenize((self._keep_only_russian_chars(str(doc).lower()))) for doc in corpora]
 

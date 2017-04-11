@@ -13,15 +13,17 @@ class PredictActionData:
 
     def get_all(self):
         rows = []
-        for post in tqdm(self.raw_wall_data.posts):
+        for post in tqdm(self.raw_wall_data.posts, 'PredictActionData.get_all: for posts'):
             user_actions = defaultdict(lambda: {'is_liked': False, 'is_reposted': False})
-            for user in post['likes']['users']:
-                user_actions[user['id']]['is_liked'] = True
-            for user in post['reposts']['users']:
-                user_actions[user['id']]['is_reposted'] = True
+            for user_id in post['likes']['users']:
+                user_actions[user_id]['is_liked'] = True
+            for user_id in post['reposts']['users']:
+                user_actions[user_id]['is_reposted'] = True
             for user_id, actions in user_actions.items():
-                user = self.raw_users_data.find_user(user_id)['user']
-                rows.append(self.get_row(user, post, actions['is_liked'], actions['is_reposted']))
+                user_find_result = self.raw_users_data.find_user(user_id)
+                if user_find_result is not None:
+                    user = user_find_result['user']
+                    rows.append(self.get_row(user, post, actions['is_liked'], actions['is_reposted']))
         return pd.DataFrame(rows, columns=self.get_labels())
 
     def get_row(self, user, post, is_liked, is_reposted):

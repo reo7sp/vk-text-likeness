@@ -20,10 +20,10 @@ class RawWallData:
         self._fetch_activity()
 
     def _fetch_wall(self):
-        self.posts = self.vk_tools.get_all('wall.get', 100, {'owner_id': -self.group_id, 'extended': 1})['items']
+        self.posts = self.vk_tools.get_all('wall.get', 100, {'owner_id': -self.group_id, 'extended': 1})['items'][:10]  # FIXME
 
     def _fetch_activity(self):
-        for post in tqdm(self.posts):
+        for post in tqdm(self.posts, 'RawWallData._fetch_activity: for posts'):
             likes = self.vk.likes.getList(filter='likes', item_id=post['id'], owner_id=-post['owner_id'], count=1000,
                                           **{'type': 'post'})
             likes = likes['items']
@@ -36,11 +36,6 @@ class RawWallData:
             post['reposts'] = dict() if 'likes' not in post else post['reposts']
             post['reposts']['users'] = reposts
 
-            comments = self.vk.wall.getComments(post_id=post['id'], owner_id=-post['owner_id'], need_likes=1, count=1000)
-            comments = comments['items']
-            post['comments'] = dict() if 'likes' not in post else post['comments']
-            post['comments']['items'] = comments
-
 
 class TableWallData:
     def __init__(self, raw_wall_data, num_topics=15):
@@ -52,7 +47,7 @@ class TableWallData:
 
     def get_all(self):
         posts = self.raw_wall_data.posts
-        return pd.DataFrame([self.get_row(post) for post in tqdm(posts)], index=[post['id'] for post in posts])
+        return pd.DataFrame([self.get_row(post) for post in tqdm(posts, 'TableWallData.get_all: for posts')], index=[post['id'] for post in posts])
 
     @lru_cache(maxsize=-1)
     def get_row(self, post):

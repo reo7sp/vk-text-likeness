@@ -14,22 +14,22 @@ class GroupPredict:
         self.vk_session = vk_api.VkApi(token=vk_access_token)
 
         self.raw_users_data = RawUsersData(group_id, self.vk_session)
-        print('-----> raw_users_data.fetch()', group_id)
+        print('-----> raw_users_data.fetch', group_id)
         self.raw_users_data.fetch()
         self.table_users_data = TableUsersData(self.raw_users_data)
-        print('-----> table_users_data.fit()', group_id)
+        print('-----> table_users_data.fit', group_id)
         self.table_users_data.fit()
 
         self.raw_wall_data = RawWallData(group_id, self.vk_session)
-        print('-----> raw_wall_data.fetch()', group_id)
+        print('-----> raw_wall_data.fetch', group_id)
         self.raw_wall_data.fetch()
         self.table_wall_data = TableWallData(self.raw_wall_data)
-        print('-----> table_wall_data.fit()', group_id)
+        print('-----> table_wall_data.fit', group_id)
         self.table_wall_data.fit()
 
         self.predict_action_data = PredictActionData(self.raw_users_data, self.table_users_data, self.raw_wall_data, self.table_wall_data)
         self.predict_action_model = PredictActionModel(self.predict_action_data)
-        print('-----> predict_action_model.fit()', group_id)
+        print('-----> predict_action_model.fit', group_id)
         self.predict_action_model.fit()
 
         self.predict_stats_model = PredictStatsModel(self.predict_action_model, self.raw_users_data, self.predict_action_data)

@@ -13,13 +13,13 @@ class PredictActionModel:
 
     def fit(self):
         df = self.predict_data.get_all()
-        x_df = df.drop(['user_id', 'post_id', 'is_liked', 'is_reposted'])
+        x_df = df.drop(['user_id', 'post_id', 'is_liked', 'is_reposted'], axis=1)
         self.like_model.fit(x_df, df['is_liked'])
         self.repost_model.fit(x_df, df['is_reposted'])
 
     def predict(self):
         df = self.predict_data.get_all()
-        x_df = df.drop(['user_id', 'post_id', 'is_liked', 'is_reposted'])
+        x_df = df.drop(['user_id', 'post_id', 'is_liked', 'is_reposted'], axis=1)
         pred = np.hstack([df['user_id'], df['post_id'], self.like_model.predict(x_df), self.repost_model.predict(x_df)])
         return pd.DataFrame(pred, columns=['user_id', 'post_id', 'is_liked', 'is_reposted'])
 
