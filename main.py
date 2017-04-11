@@ -1,16 +1,14 @@
-import click
+import os
 
 from vk_text_likeness.predict import GroupPredict
 
-@click.command()
-@click.argument('group_id')
-@click.argument('access_token')
-def predict(group_id, access_token):
+if __name__ == '__main__':
+    group_id = int(os.sys.argv[1])
+    assert group_id < 0
+    access_token = os.sys.argv[2]
+
     group_predict = GroupPredict(group_id, access_token)
     df = group_predict.predict()
     print()
     print('-' * 80)
     print(df.to_csv())
-
-if __name__ == '__main__':
-    predict()

@@ -4,4 +4,3 @@ pandas
 gensim
 nltk
 scikit-learn
-click
