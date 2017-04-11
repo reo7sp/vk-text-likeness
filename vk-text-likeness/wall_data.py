@@ -50,9 +50,10 @@ class TableWallData:
 
     @lru_cache(maxsize=-1)
     def get_row(self, post):
-        row = [len(post['text'])]
-        row.extend(self._post_lda(post))
-        return row
+        return [post['id'], len(post['text'])] + self._post_lda(post)
+
+    def get_labels(self):
+        return ['post_id', 'text_len'] + ['post_lda' + str(i) for i in range(self.lda_maker.num_topics)]
 
     def _post_lda(self, post):
         return self.lda_maker.get(post['text'])

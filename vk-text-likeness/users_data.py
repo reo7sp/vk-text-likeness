@@ -68,13 +68,18 @@ class TableUsersData:
             users.extend(self.raw_users_data.members)
         if do_member_friends:
             users.extend(self.raw_users_data.member_friends)
-        return pd.DataFrame([self.get_row(user) for user in users], index=[user['id'] for user in users])
+        return pd.DataFrame([self.get_row(user) for user in users])
 
     @lru_cache(maxsize=-1)
     def get_row(self, user):
-        return ([self._user_is_woman(user), self._user_is_man(user), self._user_age(user),
+        return ([user['id'], self._user_is_woman(user), self._user_is_man(user), self._user_age(user),
                 self._user_is_in_russia(user), self._user_is_in_ukraine(user), self._user_is_in_byelorussia(user), self._user_is_in_kazakstan(user)] +
                 self._user_lda_by_groups(user))
+
+    def get_labels(self):
+        return (['user_id', 'is_woman', 'is_man', 'age',
+                 'is_in_russia', 'is_in_ukraine', 'is_in_byelorussia', 'is_in_kazakstan'] +
+                ['user_lda' + str(i) for i in range(self.lda_maker.num_topics)])
 
     @staticmethod
     def _user_is_woman(user):
