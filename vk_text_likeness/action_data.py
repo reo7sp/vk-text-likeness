@@ -11,6 +11,7 @@ class ActionData:
 
     def get_all(self):
         rows = []
+        friend_post_pairs = set()
         for user in tqdm(self.raw_users_data.members, 'ActionData.get_all: for members'):
             for post in self.raw_wall_data.posts:
                 is_liked = False
@@ -26,17 +27,20 @@ class ActionData:
 
                 if is_reposted:
                     for friend in self.raw_users_data.member_friends[user['id']]:
-                        friend_is_liked = False
-                        friend_is_reposted = False
-                        for user_id in post['likes']['users']:
-                            if user_id == friend['id']:
-                                friend_is_liked = True
-                                break
-                        for user_id in post['reposts']['users']:
-                            if user_id == friend['id']:
-                                friend_is_reposted = True
-                                break
-                        rows.append(self.get_row(friend, post, False, friend_is_liked, friend_is_reposted))
+                        friend_post_pair = (friend['id'], post['id'])
+                        if friend_post_pair not in friend_post_pairs:
+                            friend_is_liked = False
+                            friend_is_reposted = False
+                            for user_id in post['likes']['users']:
+                                if user_id == friend['id']:
+                                    friend_is_liked = True
+                                    break
+                            for user_id in post['reposts']['users']:
+                                if user_id == friend['id']:
+                                    friend_is_reposted = True
+                                    break
+                            rows.append(self.get_row(friend, post, False, friend_is_liked, friend_is_reposted))
+                            friend_post_pairs.add(friend_post_pair)
 
                 rows.append(self.get_row(user, post, True, is_liked, is_reposted))
 
