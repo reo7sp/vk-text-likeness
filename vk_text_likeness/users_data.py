@@ -16,13 +16,13 @@ class RawUsersData:
         self.vk = self.vk_session.get_api()
         self.vk_tools = vk_api.VkTools(self.vk_session)
         self.members = []
-        self.member_friends = defaultdict(lambda: [])
+        self.member_friends = defaultdict(list)
         self.member_fields = 'sex,bdate,country'
         self.group_fields = 'description'
 
     def fetch(self):
         self._fetch_members()
-        self._fetch_members_friends()
+        self._fetch_member_friends()
         self._fetch_groups()
 
     def _fetch_members(self):
@@ -31,8 +31,8 @@ class RawUsersData:
         for member in self.members:
             member['is_member'] = True
 
-    def _fetch_members_friends(self):
-        self.member_friends = defaultdict(lambda: [])
+    def _fetch_member_friends(self):
+        self.member_friends = defaultdict(list)
         member_ids = set(user['id'] for user in self.members)
         for member in tqdm(self.members, 'RawUsersData._fetch_members_friends: for members'):
             try:

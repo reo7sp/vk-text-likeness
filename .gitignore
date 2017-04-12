@@ -141,3 +141,5 @@ fabric.properties
 
 
 .idea
+result.csv
+*.pkl
