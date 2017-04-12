@@ -1,6 +1,6 @@
 import vk_api
 
-from vk_text_likeness.predict_data import PredictActionData
+from vk_text_likeness.action_data import ActionData
 from vk_text_likeness.predict_model import PredictActionModel, PredictStatsModel
 from vk_text_likeness.users_data import RawUsersData, TableUsersData
 from vk_text_likeness.wall_data import RawWallData, TableWallData
@@ -27,12 +27,13 @@ class GroupPredict:
         print('-----> table_wall_data.fit', group_id)
         self.table_wall_data.fit()
 
-        self.predict_action_data = PredictActionData(self.raw_users_data, self.table_users_data, self.raw_wall_data, self.table_wall_data)
-        self.predict_action_model = PredictActionModel(self.predict_action_data)
+        self.action_data = ActionData(self.raw_users_data, self.table_users_data, self.raw_wall_data, self.table_wall_data)
+
+        self.predict_action_model = PredictActionModel(self.action_data)
         print('-----> predict_action_model.fit', group_id)
         self.predict_action_model.fit()
 
-        self.predict_stats_model = PredictStatsModel(self.predict_action_model, self.raw_users_data, self.predict_action_data)
+        self.predict_stats_model = PredictStatsModel(self.predict_action_model, self.raw_users_data, self.action_data)
 
     def predict(self):
         print('=====> predict_stats_model.predict()', self.group_id)

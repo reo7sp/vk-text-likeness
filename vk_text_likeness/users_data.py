@@ -1,9 +1,8 @@
+from collections import defaultdict
 from datetime import date
-from functools import lru_cache
 
 import pandas as pd
 import vk_api
-from numpy import NaN
 from tqdm import tqdm
 
 from vk_text_likeness.lda_maker import LdaMaker
@@ -17,7 +16,7 @@ class RawUsersData:
         self.vk = self.vk_session.get_api()
         self.vk_tools = vk_api.VkTools(self.vk_session)
         self.members = []
-        self.member_friends = []
+        self.member_friends = defaultdict(lambda: [])
         self.member_fields = 'sex,bdate,country'
         self.group_fields = 'description'
 
@@ -28,29 +27,25 @@ class RawUsersData:
 
     def _fetch_members(self):
         self.members = self.vk_tools.get_all('groups.getMembers', 1000,
-                                             {'group_id': self.group_id, 'fields': self.member_fields})['items'][:2]  # FIXME
+                                             {'group_id': self.group_id, 'fields': self.member_fields})['items']
+        for member in self.members:
+            member['is_member'] = True
 
     def _fetch_members_friends(self):
-        member_friends = []
+        self.member_friends = defaultdict(lambda: [])
+        member_ids = set(user['id'] for user in self.members)
         for member in tqdm(self.members, 'RawUsersData._fetch_members_friends: for members'):
             try:
-                friends = self.vk.friends.get(user_id=member['id'], fields=self.member_fields)['items'][:1] # FIXME
-                member_friends.extend(friends)
+                friends = self.vk.friends.get(user_id=member['id'], fields=self.member_fields)['items']
+                for friend in friends:
+                    if friend['id'] not in member_ids:
+                        friend['is_member'] = False
+                        self.member_friends[member['id']].append(friend)
             except vk_api.exceptions.ApiError:
                 pass
 
-        self.member_friends = []
-        for member in member_friends:
-            found = False
-            for user in self.members:
-                if user['id'] == member['id']:
-                    found = True
-                    break
-            if not found:
-                self.member_friends.append(member)
-
     def _fetch_groups(self):
-        for user in tqdm(self.members + self.member_friends, 'RawUsersData._fetch_groups: for members + member_friends'):
+        for user in tqdm(self.get_all_users(), 'RawUsersData._fetch_groups: for members + member_friends'):
             try:
                 user['groups'] = self.vk.groups.get(user_id=user['id'], count=1000, extended=1, fields=self.group_fields)['items']
             except vk_api.exceptions.ApiError:
@@ -59,11 +54,22 @@ class RawUsersData:
     def find_user(self, user_id):
         for user in self.members:
             if user['id'] == user_id:
-                return {'user': user, 'is_member': True}
-        for user in self.member_friends:
-            if user['id'] == user_id:
-                return {'user': user, 'is_member': False}
+                return user
+        for users in self.member_friends.values():
+            for user in users:
+                if user['id'] == user_id:
+                    return user
         return None
+
+    def get_all_users(self):
+        everything = []
+        ids = set()
+        for users in [self.members] + list(self.member_friends.values()):
+            for user in users:
+                if user['id'] not in ids:
+                    everything.append(user)
+                    ids.add(user['id'])
+        return everything
 
 
 class TableUsersData:
@@ -74,12 +80,8 @@ class TableUsersData:
     def fit(self):
         self.lda_maker = LdaMaker(self._get_corpora_for_lda(), self.num_topics)
 
-    def get_all(self, do_members=True, do_member_friends=True):
-        users = []
-        if do_members:
-            users.extend(self.raw_users_data.members)
-        if do_member_friends:
-            users.extend(self.raw_users_data.member_friends)
+    def get_all(self):
+        users = self.raw_users_data.get_all_users()
         return pd.DataFrame([self.get_row(user) for user in tqdm(users, 'TableUsersData.get_all: for users')], index=[user['id'] for user in users])
 
     @cache_by_entity_id
@@ -94,16 +96,15 @@ class TableUsersData:
                 ['user_lda' + str(i) for i in range(self.lda_maker.num_topics)])
 
     def _get_corpora_for_lda(self):
-        corpora = []
-        for users in [self.raw_users_data.members, self.raw_users_data.member_friends]:
-            for user in users:
-                for group in user['groups']:
-                    try:
-                        doc = group['description']
-                        corpora.append(doc)
-                    except KeyError:
-                        pass
-        return corpora
+        corpora = set()
+        for user in self.raw_users_data.get_all_users():
+            for group in user['groups']:
+                try:
+                    doc = group['description']
+                    corpora.add(doc)
+                except KeyError:
+                    pass
+        return list(corpora)
 
     @staticmethod
     def _user_is_woman(user):

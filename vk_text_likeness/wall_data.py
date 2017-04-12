@@ -1,7 +1,5 @@
-from functools import lru_cache
-
-import vk_api
 import pandas as pd
+import vk_api
 from tqdm import tqdm
 
 from vk_text_likeness.lda_maker import LdaMaker
@@ -21,7 +19,7 @@ class RawWallData:
         self._fetch_activity()
 
     def _fetch_wall(self):
-        self.posts = self.vk_tools.get_all('wall.get', 100, {'owner_id': -self.group_id, 'extended': 1})['items'][:4]  # FIXME
+        self.posts = self.vk_tools.get_all('wall.get', 100, {'owner_id': -self.group_id, 'extended': 1})['items']
 
     def _fetch_activity(self):
         for post in tqdm(self.posts, 'RawWallData._fetch_activity: for posts'):
