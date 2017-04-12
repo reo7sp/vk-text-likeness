@@ -9,6 +9,14 @@ if __name__ == '__main__':
 
     group_predict = GroupPredict(group_id, access_token)
     df = group_predict.predict()
+    result = df.to_csv()
+
     print()
     print('-' * 80)
-    print(df.to_csv())
+    print(result)
+    try:
+        with open('result.csv', 'w') as f:
+            f.write(result)
+    except IOError as e:
+        print(e)
+        pass
