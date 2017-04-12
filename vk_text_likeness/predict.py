@@ -36,4 +36,4 @@ class GroupPredict:
 
     def predict(self):
         print('=====> predict_stats_model.predict()', self.group_id)
-        self.predict_stats_model.predict()
+        return self.predict_stats_model.predict()

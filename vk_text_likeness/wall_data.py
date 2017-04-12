@@ -5,6 +5,7 @@ import pandas as pd
 from tqdm import tqdm
 
 from vk_text_likeness.lda_maker import LdaMaker
+from vk_text_likeness.tools import cache_by_entity_id
 
 
 class RawWallData:
@@ -20,7 +21,7 @@ class RawWallData:
         self._fetch_activity()
 
     def _fetch_wall(self):
-        self.posts = self.vk_tools.get_all('wall.get', 100, {'owner_id': -self.group_id, 'extended': 1})['items'][:10]  # FIXME
+        self.posts = self.vk_tools.get_all('wall.get', 100, {'owner_id': -self.group_id, 'extended': 1})['items'][:4]  # FIXME
 
     def _fetch_activity(self):
         for post in tqdm(self.posts, 'RawWallData._fetch_activity: for posts'):
@@ -49,7 +50,7 @@ class TableWallData:
         posts = self.raw_wall_data.posts
         return pd.DataFrame([self.get_row(post) for post in tqdm(posts, 'TableWallData.get_all: for posts')], index=[post['id'] for post in posts])
 
-    @lru_cache(maxsize=-1)
+    @cache_by_entity_id
     def get_row(self, post):
         return [self._post_text_len(post)] + self._post_lda(post)
 
@@ -68,4 +69,8 @@ class TableWallData:
         return len(post['text'])
 
     def _post_lda(self, post):
-        return self.lda_maker.get(post['text'])
+        result = [0] * self.lda_maker.num_topics
+        lda_text = self.lda_maker.get(post['text'])
+        for k, v in lda_text:
+            result[k] = v
+        return result

@@ -7,6 +7,7 @@ from numpy import NaN
 from tqdm import tqdm
 
 from vk_text_likeness.lda_maker import LdaMaker
+from vk_text_likeness.tools import cache_by_entity_id
 
 
 class RawUsersData:
@@ -27,7 +28,7 @@ class RawUsersData:
 
     def _fetch_members(self):
         self.members = self.vk_tools.get_all('groups.getMembers', 1000,
-                                             {'group_id': self.group_id, 'fields': self.member_fields})['items'][:5]  # FIXME
+                                             {'group_id': self.group_id, 'fields': self.member_fields})['items'][:2]  # FIXME
 
     def _fetch_members_friends(self):
         member_friends = []
@@ -81,11 +82,11 @@ class TableUsersData:
             users.extend(self.raw_users_data.member_friends)
         return pd.DataFrame([self.get_row(user) for user in tqdm(users, 'TableUsersData.get_all: for users')], index=[user['id'] for user in users])
 
-    @lru_cache(maxsize=-1)
+    @cache_by_entity_id
     def get_row(self, user):
-        return ([self._user_is_woman(user), self._user_is_man(user), self._user_age(user),
-                self._user_is_in_russia(user), self._user_is_in_ukraine(user), self._user_is_in_byelorussia(user), self._user_is_in_kazakstan(user)] +
-                self._user_lda_by_groups(user))
+        return [self._user_is_woman(user), self._user_is_man(user), self._user_age(user),
+                self._user_is_in_russia(user), self._user_is_in_ukraine(user), self._user_is_in_byelorussia(user), self._user_is_in_kazakstan(user)] + \
+                self._user_lda_by_groups(user)
 
     def get_labels(self):
         return (['is_woman', 'is_man', 'age',
@@ -106,10 +107,14 @@ class TableUsersData:
 
     @staticmethod
     def _user_is_woman(user):
+        if 'sex' not in user:
+            return False
         return user['sex'] == 1
 
     @staticmethod
     def _user_is_man(user):
+        if 'sex' not in user:
+            return False
         return user['sex'] == 2
 
     @staticmethod
@@ -120,30 +125,45 @@ class TableUsersData:
                 year = int(bdate_parts[-1])
                 return date.today().year - year
             else:
-                return NaN
+                return -1
         else:
-            return NaN
+            return -1
 
     @staticmethod
     def _user_is_in_russia(user):
+        if 'country' not in user:
+            return False
         return user['country']['id'] == 1
 
     @staticmethod
     def _user_is_in_ukraine(user):
+        if 'country' not in user:
+            return False
         return user['country']['id'] == 2
 
     @staticmethod
     def _user_is_in_byelorussia(user):
+        if 'country' not in user:
+            return False
         return user['country']['id'] == 3
 
     @staticmethod
     def _user_is_in_kazakstan(user):
+        if 'country' not in user:
+            return False
         return user['country']['id'] == 4
 
     def _user_lda_by_groups(self, user):
-        row = [0] * self.lda_maker.num_topics
+        result = [0] * self.lda_maker.num_topics
+        lda_count = 0
         for group in user['groups']:
-            lda_desc = self.lda_maker.get(group['description'])
-            for k, v in lda_desc:
-                row[k] = v
-        return row
+            try:
+                lda_desc = self.lda_maker.get(group['description'])
+                for k, v in lda_desc:
+                    result[k] += v
+                lda_count += 1
+            except KeyError:
+                pass
+        for i in range(len(result)):
+            result[i] /= lda_count
+        return result

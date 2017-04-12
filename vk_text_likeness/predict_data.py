@@ -1,5 +1,6 @@
 from collections import defaultdict
 
+import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
@@ -20,10 +21,13 @@ class PredictActionData:
             for user_id in post['reposts']['users']:
                 user_actions[user_id]['is_reposted'] = True
             for user_id, actions in user_actions.items():
-                user_find_result = self.raw_users_data.find_user(user_id)
-                if user_find_result is not None:
-                    user = user_find_result['user']
-                    rows.append(self.get_row(user, post, actions['is_liked'], actions['is_reposted']))
+                # FIXME
+                # user_find_result = self.raw_users_data.find_user(user_id)
+                # if user_find_result is not None:
+                #     user = user_find_result['user']
+                #     rows.append(self.get_row(user, post, actions['is_liked'], actions['is_reposted']))
+                user = self.raw_users_data.members[np.random.randint(len(self.raw_users_data.members))]  # FIXME
+                rows.append(self.get_row(user, post, actions['is_liked'], actions['is_reposted']))
         return pd.DataFrame(rows, columns=self.get_labels())
 
     def get_row(self, user, post, is_liked, is_reposted):

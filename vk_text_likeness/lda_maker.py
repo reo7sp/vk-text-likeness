@@ -31,7 +31,11 @@ class LdaMaker:
         corpora_bow = [self.dictionary.doc2bow(doc) for doc in corpora_stemmed]
         # self.tfidf = gensim.models.TfidfModel(corpora_bow)
         # corpora_tfidf = self.tfidf[corpora_bow]
+
         self.lda = LdaMulticore(num_topics=self.num_topics, corpus=corpora_bow, id2word=self.dictionary)
+
+        for s in self.lda.print_topics():
+            print(s)
 
     def get(self, doc):
         doc = self.tokenizer.tokenize(self._keep_only_russian_chars(doc.lower()))
