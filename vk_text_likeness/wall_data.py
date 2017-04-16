@@ -63,7 +63,7 @@ class RawWallData:
     def get_who_reposted(self):
         result = set()
         for post in self.posts:
-            result.union(post['reposts']['user_ids'])
+            result |= post['reposts']['user_ids']
         return result
 
 

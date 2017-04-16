@@ -24,7 +24,7 @@ class RawUsersData:
     def fetch(self):
         self._fetch_members()
 
-    def fetch_more(self, subset=None):
+    def fetch_more(self, subset):
         self._fetch_member_friends(subset)
         self._fetch_groups(subset)
 
