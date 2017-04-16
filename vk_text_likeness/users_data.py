@@ -1,12 +1,11 @@
 from collections import defaultdict
 from datetime import date
 
-import pandas as pd
 import vk_api
-from tqdm import tqdm
 
 from vk_text_likeness.lda_maker import LdaMaker
 from vk_text_likeness.tools import cache_by_entity_id
+from vk_text_likeness.logs import log_method_begin, log_method_end
 
 
 class RawUsersData:
@@ -15,8 +14,10 @@ class RawUsersData:
         self.vk_session = vk_session
         self.vk = self.vk_session.get_api()
         self.vk_tools = vk_api.VkTools(self.vk_session)
+
         self.members = []
         self.member_friends = defaultdict(list)
+
         self.member_fields = 'sex,bdate,country'
         self.group_fields = 'description'
 
@@ -26,48 +27,68 @@ class RawUsersData:
         self._fetch_groups()
 
     def _fetch_members(self):
-        self.members = self.vk_tools.get_all('groups.getMembers', 1000,
-                                             {'group_id': self.group_id, 'fields': self.member_fields})['items']
+        log_method_begin()
+
+        self.members = self.vk_tools.get_all(
+            'groups.getMembers', 1000, {'group_id': self.group_id, 'fields': self.member_fields}
+        )['items']
+
         for member in self.members:
             member['is_member'] = True
 
+        log_method_end()
+
     def _fetch_member_friends(self):
-        friends_from_pool = {}
+        log_method_begin()
+
+        pool_results = []
+
         with vk_api.VkRequestsPool(self.vk_session) as pool:
             for member in self.members:
-                friends_from_pool[member['id']] = pool.method('friends.get', {
-                    'user_id': member['id'], 'fields': 'photo'
-                })
-        member_ids = set(user['id'] for user in self.members)
+                pool_results.append(
+                    (member['id'], pool.method('friends.get', {'user_id': member['id'], 'fields': 'photo'}))
+                )
+
         self.member_friends = defaultdict(list)
-        for member_id, friend_request in friends_from_pool.items():
+        member_ids = set(user['id'] for user in self.members)
+        for member_id, friend_request in pool_results:
             if friend_request.ok:
                 for friend in friend_request.result['items']:
                     if friend['id'] not in member_ids:
                         friend['is_member'] = False
                         self.member_friends[member_id].append(friend)
 
+        log_method_end()
+
     def _fetch_groups(self):
+        log_method_begin()
+
         users = self.get_all_users()
+
         with vk_api.VkRequestsPool(self.vk_session) as pool:
             for user in users:
                 user['groups'] = pool.method('groups.get', {
                     'user_id': user['id'], 'count': 1000, 'extended': 1, 'fields': self.group_fields
                 })
+
         for user in users:
             if user['groups'].ok:
                 user['groups'] = user['groups'].result['items']
             else:
                 user['groups'] = []
 
+        log_method_end()
+
     def find_user(self, user_id):
         for user in self.members:
             if user['id'] == user_id:
                 return user
+
         for users in self.member_friends.values():
             for user in users:
                 if user['id'] == user_id:
                     return user
+
         return None
 
     def get_all_users(self):
@@ -87,17 +108,16 @@ class TableUsersData:
         self.num_topics = num_topics
 
     def fit(self):
+        log_method_begin()
         self.lda_maker = LdaMaker(self._get_corpora_for_lda(), self.num_topics)
-
-    def get_all(self):
-        users = self.raw_users_data.get_all_users()
-        return pd.DataFrame([self.get_row(user) for user in tqdm(users, 'TableUsersData.get_all: for users')], index=[user['id'] for user in users])
+        log_method_end()
 
     @cache_by_entity_id
     def get_row(self, user):
         return [self._user_is_woman(user), self._user_is_man(user), self._user_age(user),
-                self._user_is_in_russia(user), self._user_is_in_ukraine(user), self._user_is_in_byelorussia(user), self._user_is_in_kazakstan(user)] + \
-                self._user_lda_by_groups(user)
+                self._user_is_in_russia(user), self._user_is_in_ukraine(user), self._user_is_in_byelorussia(user),
+                self._user_is_in_kazakstan(user)] + \
+               self._user_lda_by_groups(user)
 
     def get_labels(self):
         return (['is_woman', 'is_man', 'age',

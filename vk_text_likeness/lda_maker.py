@@ -13,7 +13,7 @@ with open('data/stopwords.txt') as f:
 
 
 class LdaMaker:
-    def __init__(self, corpora, num_topics):
+    def __init__(self, corpora, num_topics, print_topics=True):
         self.num_topics = num_topics
 
         self.tokenizer = nltk.tokenize.TreebankWordTokenizer()
@@ -34,8 +34,9 @@ class LdaMaker:
 
         self.lda = LdaMulticore(num_topics=self.num_topics, corpus=corpora_bow, id2word=self.dictionary)
 
-        for s in self.lda.print_topics():
-            print(s)
+        if print_topics:
+            for s in self.lda.print_topics():
+                print(s)
 
     def get(self, doc):
         doc = self.tokenizer.tokenize(self._keep_only_russian_chars(doc.lower()))

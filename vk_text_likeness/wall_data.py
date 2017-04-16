@@ -1,8 +1,7 @@
-import pandas as pd
 import vk_api
-from tqdm import tqdm
 
 from vk_text_likeness.lda_maker import LdaMaker
+from vk_text_likeness.logs import log_method_begin, log_method_end
 from vk_text_likeness.tools import cache_by_entity_id
 
 
@@ -12,6 +11,7 @@ class RawWallData:
         self.vk_session = vk_session
         self.vk = self.vk_session.get_api()
         self.vk_tools = vk_api.VkTools(self.vk_session)
+
         self.posts = []
 
     def fetch(self):
@@ -19,21 +19,45 @@ class RawWallData:
         self._fetch_activity()
 
     def _fetch_wall(self):
+        log_method_begin()
         self.posts = self.vk_tools.get_all('wall.get', 100, {'owner_id': -self.group_id, 'extended': 1})['items']
+        log_method_end()
 
     def _fetch_activity(self):
-        for post in tqdm(self.posts, 'RawWallData._fetch_activity: for posts'):
-            likes = self.vk.likes.getList(filter='likes', item_id=post['id'], owner_id=-post['owner_id'], count=1000,
-                                          **{'type': 'post'})
-            likes = likes['items']
-            post['likes'] = dict() if 'likes' not in post else post['likes']
-            post['likes']['users'] = likes
+        log_method_begin()
 
-            reposts = self.vk.likes.getList(filter='copies', item_id=post['id'], owner_id=-post['owner_id'], count=1000,
-                                            **{'type': 'post'})
-            reposts = reposts['items']
-            post['reposts'] = dict() if 'likes' not in post else post['reposts']
-            post['reposts']['users'] = reposts
+        pool_results = []
+
+        with vk_api.VkRequestsPool(self.vk_session) as pool:
+            for post in self.posts:
+                likes = pool.method(
+                    'likes.getList',
+                    {'item_id': post['id'], 'owner_id': -self.group_id, 'type': 'post', 'count': 1000, 'filter': 'likes'}
+                )
+                reposts = pool.method(
+                    'likes.getList',
+                    {'item_id': post['id'], 'owner_id': -self.group_id, 'type': 'post', 'count': 1000, 'filter': 'copies'}
+                )
+                pool_results.append((post, likes, reposts))
+
+        for post, likes, reposts in pool_results:
+            if 'likes' not in post:
+                post['likes'] = dict()
+            if likes.ok:
+                likes = likes.result['items']
+                post['likes']['users'] = likes
+            else:
+                post['likes']['users'] = []
+
+            if 'reposts' not in post:
+                post['reposts'] = dict()
+            if reposts.ok:
+                reposts = reposts.result['items']
+                post['reposts']['users'] = reposts
+            else:
+                post['reposts']['users'] = []
+
+        log_method_end()
 
 
 class TableWallData:
@@ -42,11 +66,9 @@ class TableWallData:
         self.num_topics = num_topics
 
     def fit(self):
+        log_method_begin()
         self.lda_maker = LdaMaker(self._get_corpora_for_lda(), self.num_topics)
-
-    def get_all(self):
-        posts = self.raw_wall_data.posts
-        return pd.DataFrame([self.get_row(post) for post in tqdm(posts, 'TableWallData.get_all: for posts')], index=[post['id'] for post in posts])
+        log_method_end()
 
     @cache_by_entity_id
     def get_row(self, post):
