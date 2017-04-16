@@ -1,5 +1,8 @@
+import os
+import pickle
 from collections import defaultdict
 from datetime import date
+import time
 
 import vk_api
 
@@ -15,11 +18,13 @@ class RawUsersData:
         self.vk = self.vk_session.get_api()
         self.vk_tools = vk_api.VkTools(self.vk_session)
 
-        self.members = []
-        self.member_friends = defaultdict(list)
+        self.members = None
+        self.member_friends = None
 
         self.member_fields = 'sex,bdate,country'
         self.group_fields = 'description'
+
+        self.fetch_groups_mark_file = 'RawUsersData._fetch_groups_error{}'.format(self.group_id)
 
     def fetch(self):
         self._fetch_members()
@@ -29,6 +34,8 @@ class RawUsersData:
         self._fetch_groups()
 
     def _fetch_members(self):
+        if self.members is not None:
+            return
         log_method_begin()
 
         self.members = self.vk_tools.get_all(
@@ -42,6 +49,8 @@ class RawUsersData:
         log_method_end()
 
     def _fetch_member_friends(self, user_subset):
+        if self.member_friends is not None:
+            return
         log_method_begin()
 
         members = [member for member in self.members if member['id'] in user_subset]
@@ -71,19 +80,48 @@ class RawUsersData:
         users = self.get_all_users()
         print('{} users to fetch'.format(len(users)))
 
-        with vk_api.VkRequestsPool(self.vk_session) as pool:
-            for user in users:
-                user['groups'] = pool.method('groups.get', {
-                    'user_id': user['id'], 'count': 1000, 'extended': 1, 'fields': self.group_fields
-                })
-
-        for user in users:
-            if user['groups'].ok:
-                user['groups'] = user['groups'].result['items']
-            else:
-                user['groups'] = []
+        do_fetch = True
+        last_error_time = -1
+        while do_fetch:
+            try:
+                pool_results = []
+                with vk_api.VkRequestsPool(self.vk_session) as pool:
+                    for user in users:
+                        if 'groups' not in user:
+                            pool_results.append(
+                                (user, pool.method('groups.get', {'user_id': user['id'], 'count': 1000, 'extended': 1, 'fields': self.group_fields}))
+                            )
+                do_fetch = False
+                self.unmark_fetch_groups_error()
+            except Exception as e:
+                print('Can\'t fetch groups because of', e)
+                if time.time() - last_error_time < 120:
+                    print('Can\'t do anything, exit. Restart will reuse fetched users')
+                    do_fetch = False
+                    self.mark_fetch_groups_error()
+                else:
+                    print('Trying again in 1 minute')
+                    time.sleep(60)
+                last_error_time = time.time()
+            finally:
+                for user, groups_request in pool_results:
+                    if groups_request.ok:
+                        user['groups'] = groups_request.result['items']
+                    else:
+                        user['groups'] = []
 
         log_method_end()
+
+    def was_fetch_groups_error(self):
+        return os.path.isfile(self.fetch_groups_mark_file)
+
+    def mark_fetch_groups_error(self):
+        with open(self.fetch_groups_mark_file, 'w') as f:
+            f.write('True')
+
+    def unmark_fetch_groups_error(self):
+        if self.was_fetch_groups_error():
+            os.remove(self.fetch_groups_mark_file)
 
     def find_user(self, user_id):
         for user in self.members:

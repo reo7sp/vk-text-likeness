@@ -47,11 +47,14 @@ class GroupPredict:
     def _init_raw_users_data_more(self):
         self.raw_users_data.member_friends = self._try_load_pickle('raw_users_data.member_friends')
 
-        if self.raw_users_data.member_friends is None:
+        if self.raw_users_data.member_friends is None or self.raw_users_data.was_fetch_groups_error():
             self.raw_users_data.fetch_more(self.raw_wall_data.get_who_reposted())
 
             self._save_pickle('raw_users_data.members', self.raw_users_data.members)
             self._save_pickle('raw_users_data.member_friends', self.raw_users_data.member_friends)
+
+            if self.raw_users_data.was_fetch_groups_error():
+                exit(1)
 
     def _init_table_users_data(self):
         self.table_users_data = TableUsersData(self.raw_users_data)
