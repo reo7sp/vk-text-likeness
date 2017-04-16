@@ -1,4 +1,4 @@
-vk_api
+-e git://github.com/reo7sp/vk_api.git#egg=vk_api
 numpy
 pandas
 gensim
