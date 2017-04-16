@@ -26,7 +26,7 @@ class RawUsersData:
 
     def fetch_more(self, subset):
         self._fetch_member_friends(subset)
-        self._fetch_groups(subset)
+        self._fetch_groups()
 
     def _fetch_members(self):
         log_method_begin()
@@ -65,10 +65,10 @@ class RawUsersData:
 
         log_method_end()
 
-    def _fetch_groups(self, user_subset):
+    def _fetch_groups(self):
         log_method_begin()
 
-        users = [user for user in self.get_all_users() if user['id'] in user_subset]
+        users = self.get_all_users()
         print('{} users to fetch'.format(len(users)))
 
         with vk_api.VkRequestsPool(self.vk_session) as pool:
