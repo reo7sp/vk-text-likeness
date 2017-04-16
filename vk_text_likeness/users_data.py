@@ -43,6 +43,7 @@ class RawUsersData:
 
     def _fetch_member_friends(self, user_subset):
         log_method_begin()
+        print('{} users to fetch'.format(len(user_subset)))
 
         pool_results = []
 

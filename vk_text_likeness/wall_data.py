@@ -26,6 +26,7 @@ class RawWallData:
 
     def _fetch_activity(self):
         log_method_begin()
+        print('{} posts to fetch'.format(len(self.posts)))
 
         pool_results = []
 
