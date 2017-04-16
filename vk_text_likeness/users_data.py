@@ -105,7 +105,7 @@ class RawUsersData:
                 last_error_time = time.time()
             finally:
                 for user, groups_request in pool_results:
-                    if groups_request.ok:
+                    if groups_request.ok and groups_request.ready:
                         user['groups'] = groups_request.result['items']
                     else:
                         user['groups'] = []
