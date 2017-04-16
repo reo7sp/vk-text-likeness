@@ -60,6 +60,12 @@ class RawWallData:
 
         log_method_end()
 
+    def get_who_reposted(self):
+        result = set()
+        for post in self.posts:
+            result.union(post['reposts']['user_ids'])
+        return result
+
 
 class TableWallData:
     def __init__(self, raw_wall_data, num_topics=15):

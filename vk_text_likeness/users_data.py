@@ -23,8 +23,10 @@ class RawUsersData:
 
     def fetch(self):
         self._fetch_members()
-        self._fetch_member_friends()
-        self._fetch_groups()
+
+    def fetch_more(self, subset=None):
+        self._fetch_member_friends(subset)
+        self._fetch_groups(subset)
 
     def _fetch_members(self):
         log_method_begin()
@@ -39,32 +41,31 @@ class RawUsersData:
 
         log_method_end()
 
-    def _fetch_member_friends(self):
+    def _fetch_member_friends(self, user_subset):
         log_method_begin()
 
         pool_results = []
 
         with vk_api.VkRequestsPool(self.vk_session) as pool:
-            for member in self.members:
+            for member_id in user_subset:
                 pool_results.append(
-                    (member['id'], pool.method('friends.get', {'user_id': member['id'], 'fields': 'photo'}))
+                    (member_id, pool.method('friends.get', {'user_id': member_id, 'fields': 'photo'}))
                 )
 
         self.member_friends = defaultdict(list)
-        member_ids = set(user['id'] for user in self.members)
         for member_id, friend_request in pool_results:
             if friend_request.ok:
                 for friend in friend_request.result['items']:
-                    if friend['id'] not in member_ids:
+                    if friend['id'] not in user_subset:
                         friend['is_member'] = False
                         self.member_friends[member_id].append(friend)
 
         log_method_end()
 
-    def _fetch_groups(self):
+    def _fetch_groups(self, user_subset):
         log_method_begin()
 
-        users = self.get_all_users()
+        users = [user for user in self.get_all_users() if user['id'] in user_subset]
         print('{} users to fetch'.format(len(users)))
 
         with vk_api.VkRequestsPool(self.vk_session) as pool:

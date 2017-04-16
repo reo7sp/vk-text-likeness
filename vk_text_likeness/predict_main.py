@@ -16,8 +16,9 @@ class GroupPredict:
         self.vk_session = vk_api.VkApi(token=vk_access_token)
 
         self._init_raw_users_data()
-        self._init_table_users_data()
         self._init_raw_wall_data()
+        self._init_raw_users_data_more()
+        self._init_table_users_data()
         self._init_table_wall_data()
         self._init_action_data()
         self._init_predict_action_model()
@@ -27,10 +28,27 @@ class GroupPredict:
         self.raw_users_data = RawUsersData(self.group_id, self.vk_session)
 
         self.raw_users_data.members = self._try_load_pickle('raw_users_data.members')
+
+        if self.raw_users_data.members is None:
+            self.raw_users_data.fetch()
+
+            self._save_pickle('raw_users_data.members', self.raw_users_data.members)
+
+    def _init_raw_wall_data(self):
+        self.raw_wall_data = RawWallData(self.group_id, self.vk_session)
+
+        self.raw_wall_data.posts = self._try_load_pickle('raw_wall_data.posts')
+
+        if self.raw_wall_data.posts is None:
+            self.raw_wall_data.fetch()
+
+            self._save_pickle('raw_wall_data.posts', self.raw_wall_data.posts)
+
+    def _init_raw_users_data_more(self):
         self.raw_users_data.member_friends = self._try_load_pickle('raw_users_data.member_friends')
 
-        if self.raw_users_data.members is None or self.raw_users_data.member_friends is None:
-            self.raw_users_data.fetch()
+        if self.raw_users_data.member_friends is None:
+            self.raw_users_data.fetch_more(self.raw_wall_data.get_who_reposted())
 
             self._save_pickle('raw_users_data.members', self.raw_users_data.members)
             self._save_pickle('raw_users_data.member_friends', self.raw_users_data.member_friends)
@@ -44,16 +62,6 @@ class GroupPredict:
             self.table_users_data.fit()
 
             self._save_pickle('table_users_data.lda_maker', self.table_users_data.lda_maker)
-
-    def _init_raw_wall_data(self):
-        self.raw_wall_data = RawWallData(self.group_id, self.vk_session)
-
-        self.raw_wall_data.posts = self._try_load_pickle('raw_wall_data.posts')
-
-        if self.raw_wall_data.posts is None:
-            self.raw_wall_data.fetch()
-
-            self._save_pickle('raw_wall_data.posts', self.raw_wall_data.posts)
 
     def _init_table_wall_data(self):
         self.table_wall_data = TableWallData(self.raw_wall_data)
