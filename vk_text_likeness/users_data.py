@@ -87,7 +87,7 @@ class RawUsersData:
                 pool_results = []
                 with vk_api.VkRequestsPool(self.vk_session) as pool:
                     for user in users:
-                        if 'groups' not in user:
+                        if 'groups' not in user or len(user['groups']) == 0:
                             pool_results.append(
                                 (user, pool.method('groups.get', {'user_id': user['id'], 'count': 1000, 'extended': 1, 'fields': self.group_fields}))
                             )
