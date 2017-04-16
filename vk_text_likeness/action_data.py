@@ -20,15 +20,15 @@ class ActionData:
         friend_post_pairs = set()
         for user in tqdm(self.raw_users_data.members, 'ActionData.get_all: for members'):
             for post in self.raw_wall_data.posts:
-                is_liked = user['id'] in post['likes']['user_ids_set']
-                is_reposted = user['id'] in post['reposts']['user_ids_set']
+                is_liked = user['id'] in post['likes']['user_ids']
+                is_reposted = user['id'] in post['reposts']['user_ids']
 
                 if is_reposted:
                     for friend in self.raw_users_data.member_friends[user['id']]:
                         friend_post_pair = (friend['id'], post['id'])
                         if friend_post_pair not in friend_post_pairs:
-                            friend_is_liked = friend['id'] in post['likes']['user_ids_set']
-                            friend_is_reposted = friend['id'] in post['reposts']['user_ids_set']
+                            friend_is_liked = friend['id'] in post['likes']['user_ids']
+                            friend_is_reposted = friend['id'] in post['reposts']['user_ids']
 
                             rows.append(self.get_row(friend, post, False, friend_is_liked, friend_is_reposted))
                             friend_post_pairs.add(friend_post_pair)
