@@ -32,24 +32,33 @@ class RawUsersData:
             member['is_member'] = True
 
     def _fetch_member_friends(self):
-        self.member_friends = defaultdict(list)
+        friends_from_pool = {}
+        with vk_api.VkRequestsPool(self.vk_session) as pool:
+            for member in self.members:
+                friends_from_pool[member['id']] = pool.method('friends.get', {
+                    'user_id': member['id'], 'fields': 'photo'
+                })
         member_ids = set(user['id'] for user in self.members)
-        for member in tqdm(self.members, 'RawUsersData._fetch_members_friends: for members'):
-            try:
-                friends = self.vk.friends.get(user_id=member['id'], fields=self.member_fields)['items']
-                for friend in friends:
+        self.member_friends = defaultdict(list)
+        for member_id, friend_request in friends_from_pool.items():
+            if friend_request.ok:
+                for friend in friend_request.result['items']:
                     if friend['id'] not in member_ids:
                         friend['is_member'] = False
-                        self.member_friends[member['id']].append(friend)
-            except vk_api.exceptions.ApiError:
-                pass
+                        self.member_friends[member_id].append(friend)
 
     def _fetch_groups(self):
-        for user in tqdm(self.get_all_users(), 'RawUsersData._fetch_groups: for members + member_friends'):
-            try:
-                user['groups'] = self.vk.groups.get(user_id=user['id'], count=1000, extended=1, fields=self.group_fields)['items']
-            except vk_api.exceptions.ApiError:
-                pass
+        users = self.get_all_users()
+        with vk_api.VkRequestsPool(self.vk_session) as pool:
+            for user in users:
+                user['groups'] = pool.method('groups.get', {
+                    'user_id': user['id'], 'count': 1000, 'extended': 1, 'fields': self.group_fields
+                })
+        for user in users:
+            if user['groups'].ok:
+                user['groups'] = user['groups'].result['items']
+            else:
+                user['groups'] = []
 
     def find_user(self, user_id):
         for user in self.members:
