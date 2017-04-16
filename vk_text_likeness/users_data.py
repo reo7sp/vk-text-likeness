@@ -43,14 +43,16 @@ class RawUsersData:
 
     def _fetch_member_friends(self, user_subset):
         log_method_begin()
-        print('{} users to fetch'.format(len(user_subset)))
+
+        members = [member for member in self.members if member['id'] in user_subset]
+        print('{} users to fetch'.format(len(members)))
 
         pool_results = []
 
         with vk_api.VkRequestsPool(self.vk_session) as pool:
-            for member_id in user_subset:
+            for member in members:
                 pool_results.append(
-                    (member_id, pool.method('friends.get', {'user_id': member_id, 'fields': 'photo'}))
+                    (member['id'], pool.method('friends.get', {'user_id': member['id'], 'fields': 'photo'}))
                 )
 
         self.member_friends = defaultdict(list)
