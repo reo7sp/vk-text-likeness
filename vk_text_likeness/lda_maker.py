@@ -1,12 +1,9 @@
 import gensim
 import nltk
 from gensim.models.ldamulticore import LdaMulticore
-from nltk.corpus import stopwords
 
 
-nltk.download('stopwords')
-ru_stopwords = set(stopwords.words('russian'))
-
+ru_stopwords = set()
 with open('data/stopwords.txt') as f:
     for line in f:
         ru_stopwords.add(line.lower().strip())
