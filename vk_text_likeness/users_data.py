@@ -1,5 +1,5 @@
 import os
-import pickle
+import traceback
 from collections import defaultdict
 from datetime import date
 import time
@@ -95,6 +95,7 @@ class RawUsersData:
                 self.unmark_fetch_groups_error()
             except Exception as e:
                 print('Can\'t fetch groups because of', e)
+                traceback.print_exc()
                 if time.time() - last_error_time < 120:
                     print('Can\'t do anything, exit. Restart will reuse fetched users')
                     do_fetch = False
