@@ -32,6 +32,7 @@ class RawUsersData:
         self.members = self.vk_tools.get_all(
             'groups.getMembers', 1000, {'group_id': self.group_id, 'fields': self.member_fields}
         )['items']
+        print('{} members'.format(len(self.members)))
 
         for member in self.members:
             member['is_member'] = True
@@ -64,6 +65,7 @@ class RawUsersData:
         log_method_begin()
 
         users = self.get_all_users()
+        print('{} users to fetch'.format(len(users)))
 
         with vk_api.VkRequestsPool(self.vk_session) as pool:
             for user in users:

@@ -21,6 +21,7 @@ class RawWallData:
     def _fetch_wall(self):
         log_method_begin()
         self.posts = self.vk_tools.get_all('wall.get', 100, {'owner_id': -self.group_id, 'extended': 1})['items']
+        print('{} posts'.format(len(self.posts)))
         log_method_end()
 
     def _fetch_activity(self):
