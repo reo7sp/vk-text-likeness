@@ -46,16 +46,20 @@ class RawWallData:
             if likes.ok:
                 likes = likes.result['items']
                 post['likes']['users'] = likes
+                post['likes']['user_ids_set'] = set(user['id'] for user in likes)
             else:
                 post['likes']['users'] = []
+                post['likes']['user_ids_set'] = set()
 
             if 'reposts' not in post:
                 post['reposts'] = dict()
             if reposts.ok:
                 reposts = reposts.result['items']
                 post['reposts']['users'] = reposts
+                post['reposts']['user_ids_set'] = set(user['id'] for user in reposts)
             else:
                 post['reposts']['users'] = []
+                post['reposts']['user_ids_set'] = set()
 
         log_method_end()
 

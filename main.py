@@ -1,6 +1,6 @@
 import os
 
-from vk_text_likeness.predict import GroupPredict
+from vk_text_likeness.predict_main import GroupPredict
 
 if __name__ == '__main__':
     group_id = int(os.sys.argv[1])
