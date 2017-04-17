@@ -14,16 +14,16 @@ class PredictActionModel:
         self.repost_model = RandomForestClassifier(n_jobs=-1)
 
     def fit(self):
-        log_method_begin()
         df = self.action_data.get_all()
+        log_method_begin()
         x_df = df.drop(['user_id', 'post_id', 'is_member', 'is_liked', 'is_reposted'], axis=1)
         self.like_model.fit(x_df, df['is_liked'])
         self.repost_model.fit(x_df, df['is_reposted'])
         log_method_end()
 
     def predict(self):
-        log_method_begin()
         df = self.action_data.get_all()
+        log_method_begin()
         x_df = df.drop(['user_id', 'post_id', 'is_member', 'is_liked', 'is_reposted'], axis=1)
         pred = [df['user_id'], df['post_id'], df['is_member'], self.like_model.predict(x_df), self.repost_model.predict(x_df)]
         result = pd.DataFrame(np.array(pred).T, columns=['user_id', 'post_id', 'is_member', 'is_liked', 'is_reposted'])

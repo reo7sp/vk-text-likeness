@@ -1,3 +1,5 @@
+from functools import lru_cache
+
 import pandas as pd
 from tqdm import tqdm
 
@@ -10,8 +12,14 @@ class ActionData:
         self.table_users_data = table_users_data
         self.raw_wall_data = raw_wall_data
         self.table_wall_data = table_wall_data
+        self.table = None
 
     def get_all(self):
+        if self.table is None:
+            self.fit()
+        return self.table
+
+    def fit(self):
         log_method_begin()
         print("{} members, {} posts".format(len(self.raw_users_data.members), len(self.raw_wall_data.posts)))
 
@@ -40,6 +48,7 @@ class ActionData:
                 rows.append(self.get_row(user, post, True, is_liked, is_reposted))
 
         result = pd.DataFrame(rows, columns=self.get_labels())
+        self.table = result
         print("{} rows".format(len(result)))
         print("{} liked, {} reposted".format(
             sum(result['is_liked']), sum(result['is_reposted'])

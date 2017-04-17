@@ -81,6 +81,13 @@ class GroupPredict:
     def _init_action_data(self):
         self.action_data = ActionData(self.raw_users_data, self.table_users_data, self.raw_wall_data, self.table_wall_data)
 
+        self.action_data.table = self._try_load_pickle('action_data.table')
+
+        if self.action_data.table is None:
+            self.action_data.fit()
+
+            self._save_pickle('action_data.table', self.action_data.table)
+
     def _init_predict_action_model(self):
         self.predict_action_model = PredictActionModel(self.action_data)
 
