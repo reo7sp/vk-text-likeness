@@ -10,8 +10,8 @@ from vk_text_likeness.logs import log_method_begin, log_method_end
 class PredictActionModel:
     def __init__(self, action_data):
         self.action_data = action_data
-        self.like_model = RandomForestClassifier()
-        self.repost_model = RandomForestClassifier()
+        self.like_model = RandomForestClassifier(n_jobs=-1)
+        self.repost_model = RandomForestClassifier(n_jobs=-1)
 
     def fit(self):
         log_method_begin()

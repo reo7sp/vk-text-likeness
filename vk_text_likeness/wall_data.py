@@ -61,6 +61,12 @@ class RawWallData:
 
         log_method_end()
 
+    def get_who_liked(self):
+        result = set()
+        for post in self.posts:
+            result |= post['likes']['user_ids']
+        return result
+
     def get_who_reposted(self):
         result = set()
         for post in self.posts:

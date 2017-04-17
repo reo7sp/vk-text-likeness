@@ -1,4 +1,5 @@
 import os
+import random
 import traceback
 from collections import defaultdict
 from datetime import date
@@ -29,9 +30,9 @@ class RawUsersData:
     def fetch(self):
         self._fetch_members()
 
-    def fetch_more(self, subset):
-        self._fetch_member_friends(subset)
-        self._fetch_groups()
+    def fetch_more(self, liked_users_set, reposted_users_set):
+        self._fetch_member_friends(reposted_users_set)
+        self._fetch_groups(liked_users_set | self._sample_user_ids(len(liked_users_set) * 2, without=liked_users_set))
 
     def _fetch_members(self):
         if self.members is not None:
@@ -74,10 +75,10 @@ class RawUsersData:
 
         log_method_end()
 
-    def _fetch_groups(self):
+    def _fetch_groups(self, user_subset):
         log_method_begin()
 
-        users = self.get_all_users()
+        users = [user for user in self.get_all_users() if user['id'] in user_subset]
         print('{} users to fetch'.format(len(users)))
 
         do_fetch = True
@@ -87,7 +88,7 @@ class RawUsersData:
                 pool_results = []
                 with vk_api.VkRequestsPool(self.vk_session) as pool:
                     for user in users:
-                        if 'groups' not in user or len(user['groups']) == 0:
+                        if 'groups' not in user:
                             pool_results.append(
                                 (user, pool.method('groups.get', {'user_id': user['id'], 'count': 1000, 'extended': 1, 'fields': self.group_fields}))
                             )
@@ -108,8 +109,6 @@ class RawUsersData:
                 for user, groups_request in pool_results:
                     if groups_request.ok and groups_request.ready:
                         user['groups'] = groups_request.result['items']
-                    else:
-                        user['groups'] = []
 
         log_method_end()
 
@@ -137,14 +136,22 @@ class RawUsersData:
         return None
 
     def get_all_users(self):
-        everything = []
+        everybody = []
         ids = set()
         for users in [self.members] + list(self.member_friends.values()):
             for user in users:
                 if user['id'] not in ids:
-                    everything.append(user)
+                    everybody.append(user)
                     ids.add(user['id'])
-        return everything
+        return everybody
+
+    def _sample_user_ids(self, n, without=set()):
+        ids = set()
+        for users in [self.members] + list(self.member_friends.values()):
+            for user in users:
+                if user['id'] not in ids and user['id'] not in without:
+                    ids.add(user['id'])
+        return set(random.sample(ids, n))
 
 
 class TableUsersData:
@@ -172,12 +179,13 @@ class TableUsersData:
     def _get_corpora_for_lda(self):
         corpora = set()
         for user in self.raw_users_data.get_all_users():
-            for group in user['groups']:
-                try:
-                    doc = group['description']
-                    corpora.add(doc)
-                except KeyError:
-                    pass
+            if 'groups' in user:
+                for group in user['groups']:
+                    try:
+                        doc = group['description']
+                        corpora.add(doc)
+                    except KeyError:
+                        pass
         return list(corpora)
 
     @staticmethod
@@ -231,14 +239,16 @@ class TableUsersData:
     def _user_lda_by_groups(self, user):
         result = [0] * self.lda_maker.num_topics
         lda_count = 0
-        for group in user['groups']:
-            try:
-                lda_desc = self.lda_maker.get(group['description'])
-                for k, v in lda_desc:
-                    result[k] += v
-                lda_count += 1
-            except KeyError:
-                pass
-        for i in range(len(result)):
-            result[i] /= lda_count
+        if 'groups' in user:
+            for group in user['groups']:
+                try:
+                    lda_desc = self.lda_maker.get(group['description'])
+                    for k, v in lda_desc:
+                        result[k] += v
+                    lda_count += 1
+                except KeyError:
+                    pass
+            if lda_count != 0:
+                for i in range(len(result)):
+                    result[i] /= lda_count
         return result
