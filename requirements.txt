@@ -5,3 +5,4 @@ gensim
 nltk
 scikit-learn
 tqdm
+joblib
