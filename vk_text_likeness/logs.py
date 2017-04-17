@@ -23,6 +23,6 @@ def log_method_end():
         logs = _method_time_logs[caller_name]
         if len(logs) > 0:
             print("{}: end ({}s)".format(caller_name, time.time() - logs[-1]))
-            logs.popitem()
+            logs.pop()
     else:
         print("{}: end".format(caller_name))
