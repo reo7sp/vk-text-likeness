@@ -17,6 +17,7 @@ if __name__ == '__main__':
     try:
         with open('result.csv', 'w') as f:
             f.write(predictions.to_csv())
+        with open('check.csv', 'w') as f:
+            f.write(check.to_csv())
     except IOError as e:
         print(e)
-        pass
