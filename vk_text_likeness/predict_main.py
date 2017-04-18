@@ -1,11 +1,14 @@
 import pickle
 import random
+from collections import Counter
 
 import pandas as pd
 import numpy as np
 import vk_api
+from tqdm import tqdm
 
 from vk_text_likeness.action_data import ActionData
+from vk_text_likeness.logs import log_method_begin, log_method_end
 from vk_text_likeness.predict_model import PredictActionModel, PredictStatsModel
 from vk_text_likeness.users_data import RawUsersData, TableUsersData
 from vk_text_likeness.wall_data import RawWallData, TableWallData
@@ -127,16 +130,42 @@ class GroupPredict:
         print('GroupPredict.predict for group {}'.format(self.group_id))
         return self.predict_stats_model.predict()
 
-    def check(self, predictions):
-        print('predict_stats_model.predict for group {}'.format(self.group_id))
+    def get_true(self, subset=None):
+        print('GroupPredict.get_true for group {}'.format(self.group_id))
+        log_method_begin()
+
+        direct_likes_count = Counter()
+        direct_reposts_count = Counter()
+        non_direct_likes_count = Counter()
+        non_direct_reposts_count = Counter()
+
+        for post in tqdm(self.raw_wall_data.posts):
+            post_id = post['id']
+            if subset is not None and post_id not in subset:
+                continue
+
+            for user_id in post['likes']['user_ids']:
+                user = self.raw_users_data.find_user(user_id)
+                if user is None:
+                    continue
+                if user['is_member']:
+                    direct_likes_count[post_id] += 1
+                else:
+                    non_direct_likes_count[post_id] += 1
+
+            for user_id in post['reposts']['user_ids']:
+                user = self.raw_users_data.find_user(user_id)
+                if user is None:
+                    continue
+                if user['is_member']:
+                    direct_reposts_count[post_id] += 1
+                else:
+                    non_direct_reposts_count[post_id] += 1
+
+        post_ids = list(direct_likes_count.keys() | direct_reposts_count.keys() | non_direct_likes_count.keys() | non_direct_reposts_count.keys())
         rows = []
-        for post_id, prediction_row in predictions.iterrows():
-            post = self.raw_wall_data.find_post(post_id)
-            rows.append([
-                len(post['likes']['user_ids']),
-                prediction_row['direct_likes_count'] + prediction_row['non_direct_likes_count'],
-                len(post['reposts']['user_ids']),
-                prediction_row['direct_reposts_count'] + prediction_row['non_direct_reposts_count']
-            ])
-        return pd.DataFrame(rows, index=predictions.index,
-                            columns=['true_likes', 'predicted_likes', 'true_reposts', 'predicted_reposts'])
+        for post_id in post_ids:
+            rows.append([direct_likes_count[post_id], direct_reposts_count[post_id], non_direct_likes_count[post_id], non_direct_reposts_count[post_id]])
+        result = pd.DataFrame(rows, index=post_ids, columns=['direct_likes_count', 'direct_reposts_count', 'non_direct_likes_count', 'non_direct_reposts_count'])
+        log_method_end()
+        return result
