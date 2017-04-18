@@ -22,7 +22,7 @@ def log_method_end():
     if caller_name in _method_time_logs:
         logs = _method_time_logs[caller_name]
         if len(logs) > 0:
-            print("{}: end ({}s)".format(caller_name, time.time() - logs[-1]))
+            print("{}: end ({:.3}s)".format(caller_name, time.time() - logs[-1]))
             logs.pop()
     else:
         print("{}: end".format(caller_name))

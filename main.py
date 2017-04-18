@@ -8,15 +8,15 @@ if __name__ == '__main__':
     access_token = os.sys.argv[2]
 
     group_predict = GroupPredict(group_id, access_token)
-    df = group_predict.predict()
-    result = df.to_csv()
+    predictions = group_predict.predict()
+    check = group_predict.check(predictions)
 
     print()
     print('-' * 80)
-    print(result)
+    print(check.to_csv())
     try:
         with open('result.csv', 'w') as f:
-            f.write(result)
+            f.write(predictions.to_csv())
     except IOError as e:
         print(e)
         pass

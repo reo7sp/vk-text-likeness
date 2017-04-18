@@ -73,6 +73,12 @@ class RawWallData:
             result |= post['reposts']['user_ids']
         return result
 
+    def find_post(self, post_id):
+        for post in self.posts:
+            if post['id'] == post_id:
+                return post
+        return None
+
 
 class TableWallData:
     def __init__(self, raw_wall_data, num_topics=15):

@@ -1,6 +1,8 @@
 import pickle
 import random
 
+import pandas as pd
+import numpy as np
 import vk_api
 
 from vk_text_likeness.action_data import ActionData
@@ -11,7 +13,7 @@ from vk_text_likeness.wall_data import RawWallData, TableWallData
 
 class GroupPredict:
     def __init__(self, group_id, vk_access_token):
-        print('GroupPredict.__init__({}, ...)'.format(group_id))
+        print('GroupPredict.__init__ for group {}'.format(group_id))
 
         self.group_id = group_id
         self.vk_session = vk_api.VkApi(token=vk_access_token)
@@ -122,5 +124,19 @@ class GroupPredict:
             print('Can\'t save pickle {}:'.format(name), e)
 
     def predict(self):
-        print('predict_stats_model.predict({})'.format(self.group_id))
+        print('GroupPredict.predict for group {}'.format(self.group_id))
         return self.predict_stats_model.predict()
+
+    def check(self, predictions):
+        print('predict_stats_model.predict for group {}'.format(self.group_id))
+        rows = []
+        for post_id, prediction_row in predictions.iterrows():
+            post = self.raw_wall_data.find_post(post_id)
+            rows.append([
+                len(post['likes']['user_ids']),
+                prediction_row['direct_likes_count'] + prediction_row['non_direct_likes_count'],
+                len(post['reposts']['user_ids']),
+                prediction_row['direct_reposts_count'] + prediction_row['non_direct_reposts_count']
+            ])
+        return pd.DataFrame(rows, index=predictions.index,
+                            columns=['true_likes', 'predicted_likes', 'true_reposts', 'predicted_reposts'])
