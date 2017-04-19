@@ -145,3 +145,5 @@ result.csv
 *.pkl
 RawUsersData._fetch_groups_error*
 *.csv
+.ipynb_checkpoints
+*.ipynb
