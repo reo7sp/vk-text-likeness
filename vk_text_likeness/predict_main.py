@@ -21,13 +21,18 @@ class GroupPredict:
         self.group_id = group_id
         self.vk_session = vk_api.VkApi(token=vk_access_token)
 
+    def prepare(self):
+        print('GroupPredict.prepare for group {}'.format(self.group_id))
         self._init_raw_users_data()
         self._init_raw_wall_data()
         self._init_raw_users_data_more()
         self._init_table_users_data()
         self._init_table_wall_data()
         self._init_action_data()
-        self._init_predict_action_model()
+
+    def fit(self, indexes=None):
+        print('GroupPredict.fit for group {}'.format(self.group_id))
+        self._init_predict_action_model(indexes)
         self._init_predict_stats_model()
 
     def _init_raw_users_data(self):
@@ -93,18 +98,21 @@ class GroupPredict:
 
             self._save_pickle('action_data.table', self.action_data.table)
 
-    def _init_predict_action_model(self):
+    def _init_predict_action_model(self, indexes):
         self.predict_action_model = PredictActionModel(self.action_data)
 
-        self.predict_action_model.like_model = self._try_load_pickle('predict_action_model.like_model')
-        self.predict_action_model.repost_model = self._try_load_pickle('predict_action_model.repost_model')
+        if indexes is None:
+            self.predict_action_model.like_model = self._try_load_pickle('predict_action_model.like_model')
+            self.predict_action_model.repost_model = self._try_load_pickle('predict_action_model.repost_model')
+            self.predict_action_model.is_fitted = True
 
-        if self.predict_action_model.like_model is None or self.predict_action_model.repost_model:
+        if not self.predict_action_model.is_fitted:
             self.predict_action_model = PredictActionModel(self.action_data)
-            self.predict_action_model.fit()
+            self.predict_action_model.fit(indexes)
 
-            self._save_pickle('predict_action_model.like_model', self.predict_action_model.like_model)
-            self._save_pickle('predict_action_model.repost_model', self.predict_action_model.repost_model)
+            if indexes is None:
+                self._save_pickle('predict_action_model.like_model', self.predict_action_model.like_model)
+                self._save_pickle('predict_action_model.repost_model', self.predict_action_model.repost_model)
 
     def _init_predict_stats_model(self):
         self.predict_stats_model = PredictStatsModel(self.predict_action_model, self.raw_users_data, self.action_data)
@@ -126,9 +134,9 @@ class GroupPredict:
         except IOError as e:
             print('Can\'t save pickle {}:'.format(name), e)
 
-    def predict(self):
+    def predict(self, indexes=None):
         print('GroupPredict.predict for group {}'.format(self.group_id))
-        return self.predict_stats_model.predict()
+        return self.predict_stats_model.predict(indexes)
 
     def get_true(self, subset=None):
         print('GroupPredict.get_true for group {}'.format(self.group_id))

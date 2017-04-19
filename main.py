@@ -8,6 +8,8 @@ if __name__ == '__main__':
     access_token = os.sys.argv[2]
 
     group_predict = GroupPredict(group_id, access_token)
+    group_predict.prepare()
+    group_predict.fit()
 
     predictions = group_predict.predict()
     with open('predictions.csv', 'w') as f:

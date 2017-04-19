@@ -12,17 +12,23 @@ class PredictActionModel:
         self.action_data = action_data
         self.like_model = RandomForestClassifier(n_jobs=-1)
         self.repost_model = RandomForestClassifier(n_jobs=-1)
+        self.is_fitted = False
 
-    def fit(self):
+    def fit(self, indexes=None):
         df = self.action_data.get_all()
+        if indexes is not None:
+            df = df.iloc[indexes]
         log_method_begin()
         x_df = df.drop(['user_id', 'post_id', 'is_member', 'is_liked', 'is_reposted'], axis=1)
         self.like_model.fit(x_df, df['is_liked'])
         self.repost_model.fit(x_df, df['is_reposted'])
+        self.is_fitted = True
         log_method_end()
 
-    def predict(self):
+    def predict(self, indexes=None):
         df = self.action_data.get_all()
+        if indexes is not None:
+            df = df.iloc[indexes]
         log_method_begin()
         x_df = df.drop(['user_id', 'post_id', 'is_member', 'is_liked', 'is_reposted'], axis=1)
         pred = [df['user_id'], df['post_id'], df['is_member'], self.like_model.predict(x_df), self.repost_model.predict(x_df)]
@@ -37,7 +43,7 @@ class PredictStatsModel:
         self.raw_users_data = raw_users_data
         self.action_data = action_data
 
-    def predict(self):
+    def predict(self, indexes=None):
         log_method_begin()
 
         direct_likes_count = Counter()
@@ -45,7 +51,7 @@ class PredictStatsModel:
         non_direct_likes_count = Counter()
         non_direct_reposts_count = Counter()
 
-        pred_df = self.predict_action_model.predict()
+        pred_df = self.predict_action_model.predict(indexes)
         for i, row in pred_df.iterrows():
             if row['is_liked']:
                 if row['is_member']:
