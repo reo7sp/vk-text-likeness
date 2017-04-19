@@ -30,9 +30,9 @@ class GroupPredict:
         self._init_table_wall_data()
         self._init_action_data()
 
-    def fit(self, indexes=None):
+    def fit(self, post_subset=None):
         print('GroupPredict.fit for group {}'.format(self.group_id))
-        self._init_predict_action_model(indexes)
+        self._init_predict_action_model(post_subset)
         self._init_predict_stats_model()
 
     def _init_raw_users_data(self):
@@ -98,19 +98,19 @@ class GroupPredict:
 
             self._save_pickle('action_data.table', self.action_data.table)
 
-    def _init_predict_action_model(self, indexes):
+    def _init_predict_action_model(self, post_subset):
         self.predict_action_model = PredictActionModel(self.action_data)
 
-        if indexes is None:
+        if post_subset is None:
             self.predict_action_model.like_model = self._try_load_pickle('predict_action_model.like_model')
             self.predict_action_model.repost_model = self._try_load_pickle('predict_action_model.repost_model')
             self.predict_action_model.is_fitted = True
 
         if not self.predict_action_model.is_fitted:
             self.predict_action_model = PredictActionModel(self.action_data)
-            self.predict_action_model.fit(indexes)
+            self.predict_action_model.fit(post_subset)
 
-            if indexes is None:
+            if post_subset is None:
                 self._save_pickle('predict_action_model.like_model', self.predict_action_model.like_model)
                 self._save_pickle('predict_action_model.repost_model', self.predict_action_model.repost_model)
 

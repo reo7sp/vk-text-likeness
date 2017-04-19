@@ -14,11 +14,13 @@ if __name__ == '__main__':
     group_predict.prepare()
 
     cv = KFold(5, shuffle=True)
+    action_df = group_predict.action_data.get_all()
+    post_ids = action_df['post_id'].unique()
     i = 0
-    for train_index, test_index in cv.split(group_predict.action_data.get_all()):
+    for train_index, test_index in cv.split(post_ids):
         print('\nCV: iter #{}'.format(i))
-        group_predict.fit(train_index)
-        predictions_df = group_predict.predict(test_index)
+        group_predict.fit(post_ids[train_index])
+        predictions_df = group_predict.predict(post_ids[test_index])
         true_df = group_predict.get_true(predictions_df.index)
         check(predictions_df, true_df)
         i += 1
