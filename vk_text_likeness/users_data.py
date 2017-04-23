@@ -78,37 +78,49 @@ class RawUsersData:
     def _fetch_groups(self, user_subset):
         log_method_begin()
 
-        users = [user for user in self.get_all_users() if user['id'] in user_subset]
-        print('{} users to fetch'.format(len(users)))
+        all_users = [user for user in self.get_all_users() if user['id'] in user_subset]
+        print('{} users to fetch'.format(len(all_users)))
 
-        do_fetch = True
-        last_error_time = -1
-        while do_fetch:
-            try:
-                pool_results = []
-                with vk_api.VkRequestsPool(self.vk_session) as pool:
-                    for user in users:
-                        if 'groups' not in user:
-                            pool_results.append(
-                                (user, pool.method('groups.get', {'user_id': user['id'], 'count': 1000, 'extended': 1, 'fields': self.group_fields}))
-                            )
-                do_fetch = False
-                self.unmark_fetch_groups_error()
-            except Exception as e:
-                print('Can\'t fetch groups because of', e)
-                traceback.print_exc()
-                if time.time() - last_error_time < 120:
-                    print('Can\'t do anything, exit. Restart will reuse fetched users')
+        all_users_processing_step = 1000
+        fetch_start = time.time()
+        for i in range(0, len(all_users), all_users_processing_step):
+            print('Fetching from {} to {}...'.format(i, i + all_users_processing_step))
+            users = all_users[i:i+all_users_processing_step]
+
+            if time.time() - fetch_start > 2 * 60 * 60:
+                print('Cooldown for 30 minutes')
+                time.sleep(30 * 60)
+                fetch_start = time.time()
+
+            do_fetch = True
+            last_error_time = -1
+            while do_fetch:
+                try:
+                    pool_results = []
+                    with vk_api.VkRequestsPool(self.vk_session) as pool:
+                        for user in users:
+                            if 'groups' not in user:
+                                pool_results.append(
+                                    (user, pool.method('groups.get', {'user_id': user['id'], 'count': 1000, 'extended': 1, 'fields': self.group_fields}))
+                                )
                     do_fetch = False
-                    self.mark_fetch_groups_error()
-                else:
-                    print('Trying again in 1 minute')
-                    time.sleep(60)
-                last_error_time = time.time()
-            finally:
-                for user, groups_request in pool_results:
-                    if groups_request.ok and groups_request.ready:
-                        user['groups'] = groups_request.result['items']
+                    self.unmark_fetch_groups_error()
+                except Exception as e:
+                    print('Can\'t fetch groups because of', e)
+                    traceback.print_exc()
+                    if time.time() - last_error_time < 120:
+                        print('Can\'t do anything, exit. Restart will reuse fetched users')
+                        do_fetch = False
+                        self.mark_fetch_groups_error()
+                    else:
+                        print('Trying again in 1 minute')
+                        time.sleep(60)
+                    last_error_time = time.time()
+                finally:
+                    for user, groups_request in pool_results:
+                        if groups_request.ok and groups_request.ready:
+                            user['groups'] = [{'description': group['description']}
+                                              for group in groups_request.result['items']]
 
         log_method_end()
 
