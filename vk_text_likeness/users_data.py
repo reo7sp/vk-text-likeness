@@ -5,6 +5,7 @@ from collections import defaultdict
 from datetime import date
 import time
 
+import pickle
 import vk_api
 
 from vk_text_likeness.lda_maker import LdaMaker
@@ -122,6 +123,9 @@ class RawUsersData:
                             user['groups'] = [{'description': group['description']}
                                               for group in groups_request.result['items']]
 
+            self._save_pickle('raw_users_data.members', self.members)
+            self._save_pickle('raw_users_data.member_friends', self.member_friends)
+
         log_method_end()
 
     def was_fetch_groups_error(self):
@@ -164,6 +168,13 @@ class RawUsersData:
                 if user['id'] not in ids and user['id'] not in without:
                     ids.add(user['id'])
         return set(random.sample(ids, n))
+
+    def _save_pickle(self, name, obj):
+        try:
+            with open('{}{}.pkl'.format(name, self.group_id), 'wb') as f:
+                pickle.dump(obj, f)
+        except IOError as e:
+            print('Can\'t save pickle {}:'.format(name), e)
 
 
 class TableUsersData:
