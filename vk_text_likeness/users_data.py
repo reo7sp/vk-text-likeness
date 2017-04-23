@@ -74,7 +74,15 @@ class RawUsersData:
                         friend['is_member'] = False
                         self.member_friends[member_id].append(friend)
 
+        self._compress_users()
+
         log_method_end()
+
+    def _compress_users(self):
+        for user in self.get_all_users():
+            for column in ['first_name', 'last_name', 'online', 'deactivated', 'photo', 'lists']:
+                if column in user:
+                    del user[column]
 
     def _fetch_groups(self, user_subset):
         log_method_begin()
@@ -144,17 +152,18 @@ class RawUsersData:
             if user['id'] == user_id:
                 return user
 
-        for users in self.member_friends.values():
-            for user in users:
-                if user['id'] == user_id:
-                    return user
+        if self.member_friends is not None:
+            for users in self.member_friends.values():
+                for user in users:
+                    if user['id'] == user_id:
+                        return user
 
         return None
 
     def get_all_users(self):
         everybody = []
         ids = set()
-        for users in [self.members] + list(self.member_friends.values()):
+        for users in [self.members] + (list(self.member_friends.values()) if self.member_friends is not None else []):
             for user in users:
                 if user['id'] not in ids:
                     everybody.append(user)
@@ -163,7 +172,7 @@ class RawUsersData:
 
     def _sample_user_ids(self, n, without=set()):
         ids = set()
-        for users in [self.members] + list(self.member_friends.values()):
+        for users in [self.members] + (list(self.member_friends.values()) if self.member_friends is not None else []):
             for user in users:
                 if user['id'] not in ids and user['id'] not in without:
                     ids.add(user['id'])

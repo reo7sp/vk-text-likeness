@@ -3,7 +3,6 @@ import random
 from collections import Counter
 
 import pandas as pd
-import numpy as np
 import vk_api
 from tqdm import tqdm
 
