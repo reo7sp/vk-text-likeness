@@ -32,7 +32,7 @@ class RawUsersData:
 
     def fetch_more(self, liked_users_set, reposted_users_set):
         self._fetch_member_friends(reposted_users_set)
-        self._fetch_groups(liked_users_set | self._sample_user_ids(len(liked_users_set) * 2, without=liked_users_set))
+        self._fetch_groups(liked_users_set | self._sample_user_ids(len(liked_users_set), without=liked_users_set))
 
     def _fetch_members(self):
         if self.members is not None:
