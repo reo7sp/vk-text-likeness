@@ -76,6 +76,8 @@ class RawUsersData:
 
         self._compress_users()
 
+        self._save_pickle('raw_users_data.member_friends', self.member_friends)
+
         log_method_end()
 
     def _compress_users(self):
