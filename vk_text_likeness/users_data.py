@@ -128,8 +128,10 @@ class RawUsersData:
                 finally:
                     for user, groups_request in pool_results:
                         if groups_request.ok and groups_request.ready:
-                            user['groups'] = [{'description': group['description']}
-                                              for group in groups_request.result['items']]
+                            user['groups'] = []
+                            for group in groups_request.result['items']:
+                                if 'description' in group:
+                                    user['groups'].append({'description': group['description']})
 
             self._save_pickle('raw_users_data.members', self.members)
             self._save_pickle('raw_users_data.member_friends', self.member_friends)
